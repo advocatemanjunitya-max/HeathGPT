@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthGPT - Rural Healthcare Assistant</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .pulse-emergency {
+            animation: pulseEmergency 2s infinite;
+        }
+        @keyframes pulseEmergency {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1.02); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 h-full flex flex-col font-sans min-h-screen">
+
+    <!-- AUTHENTICATION SCREEN / OVERLAY -->
+    <div id="auth-screen" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[100] flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 my-auto">
+            
+            <!-- Auth Header -->
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-3xl mx-auto mb-3 shadow-lg">
+                    <i class="fa-solid fa-heart-pulse"></i>
+                </div>
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight" id="auth-title">HealthGPT Rural Care</h2>
+                <p class="text-xs sm:text-sm text-slate-500 mt-1" id="auth-subtitle">Aapka Swasthya Sathi - Login or Register to access personalized care</p>
+            </div>
+
+            <!-- Login / Sign Up Toggle Tabs -->
+            <div class="flex bg-slate-100 p-1.5 rounded-2xl mb-6">
+                <button type="button" onclick="switchAuthTab('login')" id="auth-tab-login" class="flex-1 py-2.5 rounded-xl text-sm font-bold transition text-emerald-700 bg-white shadow-sm">
+                    <i class="fa-solid fa-right-to-bracket mr-1.5"></i> <span id="auth-tab-login-text">Login</span>
+                </button>
+                <button type="button" onclick="switchAuthTab('signup')" id="auth-tab-signup" class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition text-slate-600 hover:text-slate-900">
+                    <i class="fa-solid fa-user-plus mr-1.5"></i> <span id="auth-tab-signup-text">New Registration</span>
+                </button>
+            </div>
+
+            <!-- LOGIN FORM -->
+            <form id="login-form" onsubmit="handleLoginSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" id="label-login-id">Mobile Number or Email</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                            <i class="fa-solid fa-phone"></i>
+                        </span>
+                        <input type="text" id="login-id" required placeholder="e.g. 9876543210" class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" id="label-login-pass">Password / PIN</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                            <i class="fa-solid fa-lock"></i>
+                        </span>
+                        <input type="password" id="login-password" required placeholder="••••••••" class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition text-base flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-shield-halved"></i> <span id="btn-login-text">Login to Account</span>
+                </button>
+            </form>
+
+            <!-- SIGN UP FORM -->
+            <form id="signup-form" onsubmit="handleSignupSubmit(event)" class="space-y-4 hidden">
+                <!-- User Type / Role Selection -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" id="label-role">Select Role / Role Chunein</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="cursor-pointer border border-slate-300 rounded-xl p-2.5 text-center transition hover:border-emerald-500 has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50">
+                            <input type="radio" name="userRole" value="Patient" checked class="hidden">
+                            <i class="fa-solid fa-user text-emerald-600 text-lg block mb-1"></i>
+                            <span class="text-xs font-bold text-slate-800 block">Patient / Kisaan</span>
+                        </label>
+                        <label class="cursor-pointer border border-slate-300 rounded-xl p-2.5 text-center transition hover:border-emerald-500 has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50">
+                            <input type="radio" name="userRole" value="ASHA Worker" class="hidden">
+                            <i class="fa-solid fa-user-nurse text-blue-600 text-lg block mb-1"></i>
+                            <span class="text-xs font-bold text-slate-800 block">ASHA Worker</span>
+                        </label>
+                        <label class="cursor-pointer border border-slate-300 rounded-xl p-2.5 text-center transition hover:border-emerald-500 has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50">
+                            <input type="radio" name="userRole" value="Doctor/Admin" class="hidden">
+                            <i class="fa-solid fa-user-doctor text-indigo-600 text-lg block mb-1"></i>
+                            <span class="text-xs font-bold text-slate-800 block">Village Doctor</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" id="label-fullname">Full Name</label>
+                        <input type="text" id="signup-name" required placeholder="Ramesh Kumar" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" id="label-phone">Mobile Number</label>
+                        <input type="tel" id="signup-phone" required placeholder="9876543210" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" id="label-village">Village / District</label>
+                        <input type="text" id="signup-village" required placeholder="Rampur, Block-A" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" id="label-preferred-lang">Preferred Language</label>
+                        <select id="signup-lang" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            <option value="hi" selected>हिंदी (Hindi)</option>
+                            <option value="en">English</option>
+                            <option value="mr">मराठी (Marathi)</option>
+                            <option value="bn">বাংলা (Bengali)</option>
+                            <option value="te">తెలుగు (Telugu)</option>
+                            <option value="ta">தமிழ் (Tamil)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" id="label-signup-pass">Create Password / PIN</label>
+                    <input type="password" id="signup-password" required placeholder="••••••••" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                </div>
+
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition text-base flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-mobile-screen"></i> <span id="btn-signup-text">Verify via Mobile OTP</span>
+                </button>
+            </form>
+
+            <!-- OTP VERIFICATION FORM (SIMULATED) -->
+            <form id="otp-form" onsubmit="handleOtpSubmit(event)" class="space-y-4 hidden">
+                <div class="bg-emerald-50 border border-emerald-200 p-3.5 rounded-2xl text-center">
+                    <p class="text-xs text-emerald-800 font-medium">OTP sent to <span id="otp-phone-display" class="font-bold">+91 9876543210</span></p>
+                    <p class="text-[11px] text-emerald-600 mt-0.5">Use default code <strong class="font-black text-emerald-800">1234</strong> for quick demo testing.</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 text-center">Enter 4-Digit Security Code</label>
+                    <div class="flex justify-center gap-3">
+                        <input type="text" maxlength="1" class="otp-input w-12 h-12 text-center text-xl font-bold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none" required>
+                        <input type="text" maxlength="1" class="otp-input w-12 h-12 text-center text-xl font-bold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none" required>
+                        <input type="text" maxlength="1" class="otp-input w-12 h-12 text-center text-xl font-bold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none" required>
+                        <input type="text" maxlength="1" class="otp-input w-12 h-12 text-center text-xl font-bold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition text-base flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-circle-check"></i> <span>Verify & Complete Registration</span>
+                </button>
+            </form>
+
+            <!-- Continue as Guest Option -->
+            <div class="mt-6 pt-4 border-t border-slate-200 text-center">
+                <button type="button" onclick="continueAsGuest()" class="text-slate-500 hover:text-emerald-700 text-xs font-bold underline transition flex items-center justify-center gap-1.5 mx-auto">
+                    <i class="fa-solid fa-user-clock"></i> <span id="btn-guest-text">Continue as Guest (Limited Offline Access)</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Emergency & Connection Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+            
+            <!-- Branding & Offline Indicator -->
+            <div class="flex items-center justify-between w-full sm:w-auto gap-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white text-xl font-bold shadow-md">
+                        <i class="fa-solid fa-heart-pulse"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-extrabold tracking-tight text-slate-800 flex items-center gap-1.5">
+                            HealthGPT <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-semibold">Rural Care</span>
+                        </h1>
+                        <p class="text-xs text-slate-500" id="sub-title-text">Aapka Swasthya Sathi</p>
+                    </div>
+                </div>
+
+                <!-- Offline Badge -->
+                <div class="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full text-emerald-700 text-xs font-medium">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span id="offline-badge-text">Offline Ready</span>
+                </div>
+            </div>
+
+            <!-- Language Switcher, User Header & Emergency Button Bar -->
+            <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+                <!-- User Profile Header Badge -->
+                <div id="user-header-profile" class="hidden flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-xl px-3 py-1.5">
+                    <div class="w-7 h-7 rounded-lg bg-emerald-700 text-white font-bold text-xs flex items-center justify-center" id="user-avatar-initials">
+                        RK
+                    </div>
+                    <div class="text-left hidden md:block">
+                        <p class="text-xs font-bold text-slate-800 leading-none" id="user-display-name">Ramesh Kumar</p>
+                        <p class="text-[10px] text-emerald-700 font-semibold" id="user-display-role">Patient (Rampur)</p>
+                    </div>
+                    <button onclick="handleLogout()" title="Logout Account" class="text-slate-400 hover:text-red-600 text-xs pl-1">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+
+                <!-- Language Selector -->
+                <div class="relative">
+                    <select id="language-select" onchange="changeLanguage(this.value)" class="bg-slate-100 border border-slate-300 text-slate-800 text-sm rounded-xl px-3 py-2 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer">
+                        <option value="en">English</option>
+                        <option value="hi" selected>हिंदी (Hindi)</option>
+                        <option value="mr">मराठी (Marathi)</option>
+                        <option value="bn">বাংলা (Bengali)</option>
+                        <option value="te">తెలుగు (Telugu)</option>
+                        <option value="ta">தமிழ் (Tamil)</option>
+                    </select>
+                </div>
+
+                <!-- Emergency Banner Trigger Button -->
+                <button onclick="toggleEmergencyModal(true)" class="pulse-emergency bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 text-sm transition-all transform active:scale-95">
+                    <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                    <span id="emergency-btn-text">EMERGENCY / 108</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Navigation Tabs -->
+    <nav class="bg-white border-b border-slate-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 flex overflow-x-auto no-scrollbar">
+            <button onclick="switchTab('chat')" id="nav-chat" class="tab-btn flex items-center gap-2 py-3 px-5 border-b-2 border-emerald-600 text-emerald-700 font-bold text-sm sm:text-base whitespace-nowrap transition-colors">
+                <i class="fa-solid fa-comments-medical text-lg"></i>
+                <span id="tab-chat-text">HealthGPT Assistant</span>
+            </button>
+            <button onclick="switchTab('symptoms')" id="nav-symptoms" class="tab-btn flex items-center gap-2 py-3 px-5 border-b-2 border-transparent text-slate-600 hover:text-emerald-700 font-semibold text-sm sm:text-base whitespace-nowrap transition-colors">
+                <i class="fa-solid fa-stethoscope text-lg"></i>
+                <span id="tab-symptoms-text">Symptom Quick Check</span>
+            </button>
+            <button onclick="switchTab('directory')" id="nav-directory" class="tab-btn flex items-center gap-2 py-3 px-5 border-b-2 border-transparent text-slate-600 hover:text-emerald-700 font-semibold text-sm sm:text-base whitespace-nowrap transition-colors">
+                <i class="fa-solid fa-hospital-user text-lg"></i>
+                <span id="tab-directory-text">PHC & ASHA Directory</span>
+            </button>
+            <button onclick="switchTab('saved')" id="nav-saved" class="tab-btn flex items-center gap-2 py-3 px-5 border-b-2 border-transparent text-slate-600 hover:text-emerald-700 font-semibold text-sm sm:text-base whitespace-nowrap transition-colors">
+                <i class="fa-solid fa-bookmark text-lg"></i>
+                <span id="tab-saved-text">Saved Advice (Offline)</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 overflow-hidden flex flex-col">
+
+        <!-- TAB 1: HEALTHGPT CHAT ASSISTANT -->
+        <div id="section-chat" class="tab-content flex-1 flex flex-col bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
+            
+            <!-- Chat Header Banner -->
+            <div class="bg-emerald-700 text-white p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                    <h2 class="text-lg font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-robot"></i> <span id="chat-header-title">AI Doctor Assistant (Voice & Text)</span>
+                    </h2>
+                    <p class="text-xs text-emerald-100" id="chat-header-desc">Ask questions in your local language. Get instant first aid and medical direction.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="clearChat()" class="bg-emerald-800 hover:bg-emerald-900 text-emerald-100 text-xs px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-rotate-right"></i> <span id="clear-chat-text">New Consultation</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Category Symptom Chips -->
+            <div class="bg-slate-50 border-b border-slate-200 p-3 flex items-center gap-2 overflow-x-auto no-scrollbar">
+                <span class="text-xs font-bold text-slate-500 whitespace-nowrap uppercase tracking-wider pl-1"><span id="quick-symptoms-label">Quick Tap:</span></span>
+                <button onclick="sendQuickPrompt('Fever and chills')" class="bg-white border border-slate-300 hover:border-emerald-500 text-slate-700 text-xs px-3 py-1.5 rounded-full font-medium whitespace-nowrap shadow-sm flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-temperature-high text-orange-500"></i> <span id="symptom-fever">Fever / Bukhar</span>
+                </button>
+                <button onclick="sendQuickPrompt('Severe cough and cold')" class="bg-white border border-slate-300 hover:border-emerald-500 text-slate-700 text-xs px-3 py-1.5 rounded-full font-medium whitespace-nowrap shadow-sm flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-head-side-cough text-blue-500"></i> <span id="symptom-cough">Cough / Khasi</span>
+                </button>
+                <button onclick="sendQuickPrompt('Stomach ache and vomiting')" class="bg-white border border-slate-300 hover:border-emerald-500 text-slate-700 text-xs px-3 py-1.5 rounded-full font-medium whitespace-nowrap shadow-sm flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-bowl-food text-amber-600"></i> <span id="symptom-stomach">Stomach Pain / Pet Dard</span>
+                </button>
+                <button onclick="sendQuickPrompt('Pregnancy care and nutrition')" class="bg-white border border-slate-300 hover:border-emerald-500 text-slate-700 text-xs px-3 py-1.5 rounded-full font-medium whitespace-nowrap shadow-sm flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-baby text-pink-500"></i> <span id="symptom-pregnancy">Pregnancy / Garbhvati</span>
+                </button>
+                <button onclick="sendQuickPrompt('Dengue Malaria high fever and joint pain')" class="bg-white border border-slate-300 hover:border-emerald-500 text-slate-700 text-xs px-3 py-1.5 rounded-full font-medium whitespace-nowrap shadow-sm flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-mosquito text-yellow-600"></i> <span id="symptom-dengue">Dengue / Malaria</span>
+                </button>
+                <button onclick="sendQuickPrompt('Snake bite emergency first aid')" class="bg-red-50 border border-red-200 hover:border-red-400 text-red-700 text-xs px-3 py-1.5 rounded-full font-medium whitespace-nowrap shadow-sm flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-shield-dog text-red-600"></i> <span id="symptom-snake">Snake Bite / Saanp Katna</span>
+                </button>
+            </div>
+
+            <!-- Chat Messages Container -->
+            <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-4 bg-slate-50/50">
+                <!-- Initial Bot Greeting -->
+                <div class="flex items-start gap-3">
+                    <div class="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-sm">
+                        <i class="fa-solid fa-robot"></i>
+                    </div>
+                    <div class="bg-white border border-slate-200 rounded-2xl p-4 max-w-xl shadow-sm text-slate-800">
+                        <p class="font-bold text-emerald-800 text-sm mb-1">HealthGPT Assistant</p>
+                        <p id="bot-welcome-msg" class="text-sm leading-relaxed">Namaste! Main aapka swasthya sahayak hoon. Aapko kya takleef hai? Aap type kar sakte hain ya neeche mic ka button dabakar bol sakte hain.</p>
+                        <div class="mt-3 flex items-center gap-2">
+                            <button onclick="saveCurrentAdvice(this)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-2.5 py-1 rounded-lg font-medium transition flex items-center gap-1">
+                                <i class="fa-regular fa-bookmark"></i> Save Offline
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Input & Voice Controls -->
+            <div class="p-3 bg-white border-t border-slate-200">
+                <form id="chat-form" onsubmit="handleChatSubmit(event)" class="flex items-center gap-2">
+                    <!-- Voice Input Simulation Button -->
+                    <button type="button" id="mic-btn" onclick="toggleVoiceRecording()" title="Speak Symptoms" class="bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-700 w-12 h-12 rounded-2xl flex items-center justify-center text-xl transition flex-shrink-0 border border-slate-200">
+                        <i id="mic-icon" class="fa-solid fa-microphone"></i>
+                    </button>
+                    <!-- Text Input -->
+                    <input type="text" id="chat-input" placeholder="Apni pareshani yahan likhein (e.g. Bukhar hai)..." class="flex-1 bg-slate-100 border border-slate-300 rounded-2xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    <!-- Send Button -->
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white w-12 h-12 rounded-2xl flex items-center justify-center text-lg transition flex-shrink-0 shadow-md">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+                <div class="flex items-center justify-between px-2 pt-2 text-[11px] text-slate-400">
+                    <span id="voice-status-hint">Tap microphone to speak in your language</span>
+                    <span>HealthGPT Rural v3.0</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- TAB 2: SYMPTOM QUICK CHECK -->
+        <div id="section-symptoms" class="tab-content hidden flex-1 flex flex-col bg-white rounded-2xl shadow-md border border-slate-200 p-4 sm:p-6 overflow-y-auto">
+            <div class="mb-6">
+                <h2 class="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-stethoscope text-emerald-600"></i> <span id="sym-grid-title">Common Health Conditions & First Aid</span>
+                </h2>
+                <p class="text-sm text-slate-500" id="sym-grid-desc">Select any condition below to instantly view safe home remedies, when to consult a doctor, and emergency warnings.</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="symptoms-card-container">
+                <!-- Card 1: Fever -->
+                <div onclick="openSymptomDetail('fever')" class="bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-300 p-4 rounded-2xl cursor-pointer transition shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="w-12 h-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center text-2xl mb-3">
+                            <i class="fa-solid fa-temperature-high"></i>
+                        </div>
+                        <h3 class="font-bold text-base text-slate-800 mb-1" id="card-fever-title">High Fever & Chills</h3>
+                        <p class="text-xs text-slate-600 leading-relaxed" id="card-fever-desc">Body temperature above 101°F, weakness, body aches.</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs font-bold text-emerald-700">
+                        <span id="view-guidance-text-1">View First Aid Guide</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </div>
+
+                <!-- Card 2: Cough & Cold -->
+                <div onclick="openSymptomDetail('cough')" class="bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-300 p-4 rounded-2xl cursor-pointer transition shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-2xl mb-3">
+                            <i class="fa-solid fa-head-side-cough"></i>
+                        </div>
+                        <h3 class="font-bold text-base text-slate-800 mb-1" id="card-cough-title">Cough, Cold & Throat Pain</h3>
+                        <p class="text-xs text-slate-600 leading-relaxed" id="card-cough-desc">Runny nose, sore throat, persistent dry or wet cough.</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs font-bold text-emerald-700">
+                        <span id="view-guidance-text-2">View First Aid Guide</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </div>
+
+                <!-- Card 3: Stomach Infection -->
+                <div onclick="openSymptomDetail('stomach')" class="bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-300 p-4 rounded-2xl cursor-pointer transition shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl mb-3">
+                            <i class="fa-solid fa-bowl-food"></i>
+                        </div>
+                        <h3 class="font-bold text-base text-slate-800 mb-1" id="card-stomach-title">Stomach Pain & Diarrhea</h3>
+                        <p class="text-xs text-slate-600 leading-relaxed" id="card-stomach-desc">Loose motions, vomiting, cramps, dehydration risk.</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs font-bold text-emerald-700">
+                        <span id="view-guidance-text-3">View First Aid Guide</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </div>
+
+                <!-- Card 4: Maternal & Child Care -->
+                <div onclick="openSymptomDetail('maternal')" class="bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-300 p-4 rounded-2xl cursor-pointer transition shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="w-12 h-12 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center text-2xl mb-3">
+                            <i class="fa-solid fa-baby-carriage"></i>
+                        </div>
+                        <h3 class="font-bold text-base text-slate-800 mb-1" id="card-maternal-title">Maternal & Child Health</h3>
+                        <p class="text-xs text-slate-600 leading-relaxed" id="card-maternal-desc">Pregnancy nutrition, newborn care, vaccination schedules.</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs font-bold text-emerald-700">
+                        <span id="view-guidance-text-4">View First Aid Guide</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </div>
+
+                <!-- Card 5: Snake Bite / Emergency -->
+                <div onclick="openSymptomDetail('snake')" class="bg-red-50/70 hover:bg-red-100/70 border border-red-200 hover:border-red-300 p-4 rounded-2xl cursor-pointer transition shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="w-12 h-12 rounded-xl bg-red-100 text-red-600 flex items-center justify-center text-2xl mb-3">
+                            <i class="fa-solid fa-shield-dog"></i>
+                        </div>
+                        <h3 class="font-bold text-base text-red-900 mb-1" id="card-snake-title">Snake Bite / Poisonous Sting</h3>
+                        <p class="text-xs text-red-700 leading-relaxed" id="card-snake-desc">CRITICAL EMERGENCY. Do not panic. Keep still & rush to PHC.</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-red-200 flex items-center justify-between text-xs font-bold text-red-700">
+                        <span id="view-guidance-text-5">Emergency Protocol</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </div>
+
+                <!-- Card 6: Injury / Wound Care -->
+                <div onclick="openSymptomDetail('injury')" class="bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-300 p-4 rounded-2xl cursor-pointer transition shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-2xl mb-3">
+                            <i class="fa-solid fa-band-aid"></i>
+                        </div>
+                        <h3 class="font-bold text-base text-slate-800 mb-1" id="card-injury-title">Wounds, Cuts & Burns</h3>
+                        <p class="text-xs text-slate-600 leading-relaxed" id="card-injury-desc">Bleeding control, washing dirty cuts, minor burn relief.</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs font-bold text-emerald-700">
+                        <span id="view-guidance-text-6">View First Aid Guide</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: LOCAL HEALTHCARE DIRECTORY -->
+        <div id="section-directory" class="tab-content hidden flex-1 flex flex-col bg-white rounded-2xl shadow-md border border-slate-200 p-4 sm:p-6 overflow-y-auto">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div>
+                    <h2 class="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-hospital-user text-emerald-600"></i> <span id="dir-title">Nearby PHC & ASHA Workers</span>
+                    </h2>
+                    <p class="text-sm text-slate-500" id="dir-desc">Direct contact numbers for Primary Health Centers, community health workers, and emergency ambulances in your rural district.</p>
+                </div>
+                <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-3 py-2 rounded-xl font-semibold flex items-center gap-2">
+                    <i class="fa-solid fa-location-dot"></i> <span id="dir-loc-text">District: Rampur / Block-A</span>
+                </div>
+            </div>
+
+            <!-- Directory Cards List -->
+            <div class="space-y-4" id="directory-list">
+                
+                <!-- Item 1: Primary Health Center -->
+                <div class="bg-slate-50 border border-slate-200 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+                    <div class="flex items-start gap-3.5">
+                        <div class="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-xl font-bold flex-shrink-0 shadow-sm">
+                            <i class="fa-solid fa-hospital"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-bold text-base text-slate-800">Primary Health Center (PHC) - Rampur</h3>
+                                <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Open 24x7</span>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-0.5">Main Chowk, Block Road, Rampur (Distance: 3.2 km)</p>
+                            <p class="text-xs text-emerald-700 font-semibold mt-1">Services: Emergency Care, Delivery, Vaccination, Free Medicines</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                        <button onclick="simulateCall('PHC Rampur', '05522-245100')" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-phone"></i> Call PHC
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Item 2: ASHA Worker -->
+                <div class="bg-slate-50 border border-slate-200 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+                    <div class="flex items-start gap-3.5">
+                        <div class="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xl font-bold flex-shrink-0 shadow-sm">
+                            <i class="fa-solid fa-user-nurse"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-bold text-base text-slate-800">ASHA Worker: Smt. Kamla Devi</h3>
+                                <span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Village: Rampur West</span>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-0.5">Available for doorstep maternal guidance & emergency support</p>
+                            <p class="text-xs text-blue-700 font-semibold mt-1">Languages: Hindi, Local Dialect</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                        <button onclick="simulateCall('ASHA Kamla Devi', '+91 98765 43210')" class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-phone"></i> Call ASHA
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Item 3: Community Health Worker -->
+                <div class="bg-slate-50 border border-slate-200 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+                    <div class="flex items-start gap-3.5">
+                        <div class="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xl font-bold flex-shrink-0 shadow-sm">
+                            <i class="fa-solid fa-user-doctor"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-bold text-base text-slate-800">Dr. Rameshwar Singh (Mobile Clinic Van)</h3>
+                                <span class="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Visits Thursdays</span>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-0.5">Weekly village health camp near Panchayat Bhavan</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                        <button onclick="simulateCall('Dr. Rameshwar Singh', '+91 91234 56789')" class="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-phone"></i> Call Doctor
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TAB 4: SAVED ADVICE (OFFLINE LOCALSTORAGE) -->
+        <div id="section-saved" class="tab-content hidden flex-1 flex flex-col bg-white rounded-2xl shadow-md border border-slate-200 p-4 sm:p-6 overflow-y-auto">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div>
+                    <h2 class="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-bookmark text-emerald-600"></i> <span id="saved-title">Saved Medical Advice (Offline Access)</span>
+                    </h2>
+                    <p class="text-sm text-slate-500" id="saved-desc">Advice saved from the chat assistant is stored locally on your device so you can read it without internet connectivity.</p>
+                </div>
+                <button onclick="clearSavedAdvices()" class="bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-600 text-xs px-3 py-2 rounded-xl font-semibold transition flex items-center gap-1.5 border border-slate-200">
+                    <i class="fa-solid fa-trash"></i> <span id="clear-saved-text">Clear Saved List</span>
+                </button>
+            </div>
+
+            <!-- Saved List Container -->
+            <div id="saved-advice-container" class="space-y-3">
+                <!-- Dynamically populated via JS -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- EMERGENCY MODAL OVERLAY -->
+    <div id="emergency-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border-4 border-red-500 animate-in fade-in zoom-in duration-200">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-red-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl bg-red-600 text-white flex items-center justify-center text-2xl font-bold animate-bounce">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-extrabold text-red-700" id="modal-heading">EMERGENCY ASSISTANCE</h3>
+                        <p class="text-xs text-slate-500" id="modal-subheading">Immediate Help & Helpline Numbers</p>
+                    </div>
+                </div>
+                <button onclick="toggleEmergencyModal(false)" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-lg transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3">
+                <!-- Ambulance 108 -->
+                <div class="bg-red-50 border border-red-200 p-4 rounded-2xl flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-red-600 uppercase tracking-wider" id="amb-label">Ambulance Service</span>
+                        <h4 class="text-2xl font-black text-red-700">108 / 102</h4>
+                        <p class="text-xs text-slate-600" id="amb-desc">Free government ambulance for rural emergencies & pregnancy transport.</p>
+                    </div>
+                    <button onclick="simulateCall('Ambulance', '108')" class="bg-red-600 hover:bg-red-700 text-white font-bold px-5 py-3 rounded-xl shadow-md text-base flex items-center gap-2 transition active:scale-95">
+                        <i class="fa-solid fa-phone-volume"></i> CALL 108
+                    </button>
+                </div>
+
+                <!-- National Emergency 112 -->
+                <div class="bg-orange-50 border border-orange-200 p-4 rounded-2xl flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-orange-600 uppercase tracking-wider" id="nat-label">National Emergency</span>
+                        <h4 class="text-2xl font-black text-orange-700">112</h4>
+                        <p class="text-xs text-slate-600" id="nat-desc">Single emergency helpline for police, health, and fire.</p>
+                    </div>
+                    <button onclick="simulateCall('National Emergency', '112')" class="bg-orange-600 hover:bg-orange-700 text-white font-bold px-5 py-3 rounded-xl shadow-md text-base flex items-center gap-2 transition active:scale-95">
+                        <i class="fa-solid fa-phone-volume"></i> CALL 112
+                    </button>
+                </div>
+
+                <!-- Women & Child Helpline -->
+                <div class="bg-purple-50 border border-purple-200 p-4 rounded-2xl flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-purple-600 uppercase tracking-wider" id="women-label">Women & Child Helpline</span>
+                        <h4 class="text-2xl font-black text-purple-700">1091 / 181</h4>
+                        <p class="text-xs text-slate-600" id="women-desc">Immediate assistance for maternal distress and protection.</p>
+                    </div>
+                    <button onclick="simulateCall('Women Helpline', '1091')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-5 py-3 rounded-xl shadow-md text-base flex items-center gap-2 transition active:scale-95">
+                        <i class="fa-solid fa-phone-volume"></i> CALL 1091
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-5 pt-3 border-t border-slate-200 text-center">
+                <p class="text-xs text-slate-500 font-medium" id="offline-call-note">Calls work even with low or zero internet signal via cellular network.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SYMPTOM DETAIL MODAL -->
+    <div id="symptom-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <div id="modal-sym-icon" class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl font-bold">
+                        <i class="fa-solid fa-stethoscope"></i>
+                    </div>
+                    <div>
+                        <h3 id="modal-sym-title" class="text-lg font-extrabold text-slate-800">Condition First Aid</h3>
+                        <p class="text-xs text-emerald-700 font-semibold">HealthGPT Verified Medical Guide</p>
+                    </div>
+                </div>
+                <button onclick="toggleSymptomModal(false)" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-lg transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div id="modal-sym-content" class="space-y-4 text-sm text-slate-700 leading-relaxed">
+                <!-- Dynamically filled -->
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-slate-200 flex items-center justify-between">
+                <button onclick="saveModalAdvice()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-2 border border-emerald-200">
+                    <i class="fa-solid fa-bookmark"></i> Save to Offline List
+                </button>
+                <button onclick="toggleSymptomModal(false)" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition">
+                    Close Guide
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CALL SIMULATION MODAL -->
+    <div id="call-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center">
+            <div class="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-4xl mx-auto mb-4 animate-pulse">
+                <i class="fa-solid fa-phone"></i>
+            </div>
+            <h3 class="text-lg font-extrabold text-slate-800 mb-1" id="call-target-name">Calling PHC Rampur...</h3>
+            <p class="text-sm font-bold text-emerald-600 mb-4" id="call-target-number">05522-245100</p>
+            <p class="text-xs text-slate-500 mb-6" id="call-status-text">Connecting through secure rural gateway...</p>
+            
+            <button onclick="closeCallModal()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-phone-slash"></i> End Call
+            </button>
+        </div>
+    </div>
+
+    <!-- CUSTOM TOAST NOTIFICATION -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white text-xs sm:text-sm px-4 py-3 rounded-2xl shadow-xl z-50 transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-2">
+        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toast-msg">Action completed successfully</span>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // Multi-language dictionary for Rural UI
+        const translations = {
+            en: {
+                subTitle: "Aapka Swasthya Sathi",
+                offlineBadge: "Offline Ready",
+                emergencyBtn: "EMERGENCY / 108",
+                tabChat: "HealthGPT Assistant",
+                tabSymptoms: "Symptom Quick Check",
+                tabDirectory: "PHC & ASHA Directory",
+                tabSaved: "Saved Advice (Offline)",
+                chatHeaderTitle: "AI Doctor Assistant (Voice & Text)",
+                chatHeaderDesc: "Ask questions in your local language. Get instant first aid and medical direction.",
+                clearChat: "New Consultation",
+                quickSymptomsLabel: "Quick Tap:",
+                feverChip: "Fever / Bukhar",
+                coughChip: "Cough / Khasi",
+                stomachChip: "Stomach Pain",
+                pregnancyChip: "Pregnancy Care",
+                dengueChip: "Dengue / Malaria",
+                snakeChip: "Snake Bite",
+                welcomeMsg: "Namaste! I am your health assistant. What are your symptoms? You can type or tap the microphone to speak.",
+                chatPlaceholder: "Type your health concern here (e.g. high fever)...",
+                voiceHint: "Tap microphone to speak in your language",
+                symGridTitle: "Common Health Conditions & First Aid",
+                symGridDesc: "Select any condition below to instantly view safe home remedies, when to consult a doctor, and emergency warnings.",
+                viewGuidance: "View First Aid Guide",
+                emergencyProtocol: "Emergency Protocol",
+                dirTitle: "Nearby PHC & ASHA Workers",
+                dirDesc: "Direct contact numbers for Primary Health Centers, community health workers, and emergency ambulances in your rural district.",
+                dirLoc: "District: Rampur / Block-A",
+                savedTitle: "Saved Medical Advice (Offline Access)",
+                savedDesc: "Advice saved from the chat assistant is stored locally on your device so you can read it without internet connectivity.",
+                clearSaved: "Clear Saved List",
+                modalHeading: "EMERGENCY ASSISTANCE",
+                modalSubheading: "Immediate Help & Helpline Numbers",
+                ambLabel: "Ambulance Service",
+                ambDesc: "Free government ambulance for rural emergencies & pregnancy transport.",
+                natLabel: "National Emergency",
+                natDesc: "Single emergency helpline for police, health, and fire.",
+                womenLabel: "Women & Child Helpline",
+                womenDesc: "Immediate assistance for maternal distress and protection.",
+                offlineCallNote: "Calls work even with low or zero internet signal via cellular network."
+            },
+            hi: {
+                subTitle: "आपका स्वास्थ्य साथी",
+                offlineBadge: "ऑफ़लाइन तैयार",
+                emergencyBtn: "आपातकालीन / 108",
+                tabChat: "हेल्थजीपीटी सहायक",
+                tabSymptoms: "लक्षण त्वरित जाँच",
+                tabDirectory: "पीएचसी और आशा निर्देशिका",
+                tabSaved: "सहेजी गई सलाह (ऑफ़लाइन)",
+                chatHeaderTitle: "एआई डॉक्टर सहायक (आवाज और पाठ)",
+                chatHeaderDesc: "अपनी भाषा में प्रश्न पूछें। तुरंत प्राथमिक उपचार और चिकित्सा मार्गदर्शन प्राप्त करें।",
+                clearChat: "नई सलाह",
+                quickSymptomsLabel: "त्वरित चयन:",
+                feverChip: "बुखार / ठंड",
+                coughChip: "खांसी / जुकाम",
+                stomachChip: "पेट दर्द",
+                pregnancyChip: "गर्भावस्था देखभाल",
+                dengueChip: "डेंगू / मलेरिया",
+                snakeChip: "सांप का काटना",
+                welcomeMsg: "नमस्ते! मैं आपका स्वास्थ्य सहायक हूँ। आपको क्या तकलीफ है? आप लिख सकते हैं या बोल सकते हैं।",
+                chatPlaceholder: "अपनी परेशानी यहाँ लिखें (जैसे - तेज बुखार है)...",
+                voiceHint: "अपनी भाषा में बोलने के लिए माइक दबाएं",
+                symGridTitle: "सामान्य स्वास्थ्य समस्याएं और प्राथमिक उपचार",
+                symGridDesc: "सुरक्षित घरेलू नुस्खे, डॉक्टर के पास कब जाएं और आपातकालीन चेतावनियां देखने के लिए नीचे दिए गए किसी भी विकल्प को चुनें।",
+                viewGuidance: "प्राथमिक उपचार गाइड देखें",
+                emergencyProtocol: "आपातकालीन प्रोटोकॉल",
+                dirTitle: "आसपास के पीएचसी और आशा कार्यकर्ता",
+                dirDesc: "आपके ग्रामीण जिले में प्राथमिक स्वास्थ्य केंद्रों, सामुदायिक स्वास्थ्य कार्यकर्ताओं और एम्बुलेंस के सीधे संपर्क नंबर।",
+                dirLoc: "जिला: रामपुर / ब्लॉक-ए",
+                savedTitle: "सहेजी गई चिकित्सा सलाह (ऑफ़लाइन)",
+                savedDesc: "चैट सहायक से सहेजी गई सलाह आपके डिवाइस पर स्थानीय रूप से संग्रहीत होती है ताकि आप बिना इंटरनेट के पढ़ सकें।",
+                clearSaved: "सूची साफ़ करें",
+                modalHeading: "आपातकालीन सहायता",
+                modalSubheading: "तत्काल सहायता और हेल्पलाइन नंबर",
+                ambLabel: "एम्बुलेंस सेवा",
+                ambDesc: "ग्रामीण आपात स्थिति और गर्भावस्था परिवहन के लिए मुफ्त सरकारी एम्बुलेंस।",
+                natLabel: "राष्ट्रीय आपातकाल",
+                natDesc: "पुलिस, स्वास्थ्य और आग के लिए एकल आपातकालीन हेल्पलाइन।",
+                womenLabel: "महिला और बाल हेल्पलाइन",
+                womenDesc: "मातृ संकट और सुरक्षा के लिए तत्काल सहायता।",
+                offlineCallNote: "कॉल सेलुलर नेटवर्क के माध्यम से कम या शून्य इंटरनेट सिग्नल पर भी काम करती है।"
+            },
+            mr: {
+                subTitle: "आपका स्वास्थ्य साथी",
+                offlineBadge: "ऑफलाइन तयार",
+                emergencyBtn: "आपत्कालीन / 108",
+                tabChat: "हेल्थजीपीटी सहाय्यक",
+                tabSymptoms: "लक्षण तपासणी",
+                tabDirectory: "PHC आणि आशा निर्देशिका",
+                tabSaved: "जतन केलेले सल्ले (ऑफलाइन)",
+                chatHeaderTitle: "एआय डॉक्टर सहाय्यक (व्हॉइस आणि टेक्स्ट)",
+                chatHeaderDesc: "तुमच्या भाषेत प्रश्न विचारू शकता. तात्काळ प्रथमोपचार मिळवा.",
+                clearChat: "नवीन सल्ला",
+                quickSymptomsLabel: "जलद पर्याय:",
+                feverChip: "ताप / थंडी",
+                coughChip: "खोकला / सर्दी",
+                stomachChip: "पोटदुखी",
+                pregnancyChip: "गर्भवती काळजी",
+                dengueChip: "डेंग्यू / मलेरिया",
+                snakeChip: "साप चावणे",
+                welcomeMsg: "नमस्कार! मी तुमचा आरोग्य सहाय्यक आहे. तुम्हाला काय त्रास आहे? तुम्ही लिहू किंवा बोलू शकता.",
+                chatPlaceholder: "तुमची समस्या येथे लिहा (उदा. तीव्र ताप आहे)...",
+                voiceHint: "बोलण्यासाठी मायक्रोफोन बटण दाबा",
+                symGridTitle: "सामान्य आरोग्य समस्या आणि प्रथमोपचार",
+                symGridDesc: "घरी करण्यामागे उपाय आणि डॉक्टरांकडे कधी जावे हे पाहण्यासाठी खालील पर्यायांवर क्लिक करा.",
+                viewGuidance: "प्रथमोपचार मार्गदर्शक पहा",
+                emergencyProtocol: "आपत्कालीन प्रोटोकॉल",
+                dirTitle: "जवळील PHC आणि आशा वर्कर्स",
+                dirDesc: "प्राथमिक आरोग्य केंद्र आणि रुग्णवाहिकेचे थेट संपर्क क्रमांक.",
+                dirLoc: "जिल्हा: रामपूर",
+                savedTitle: "जतन केलेले वैद्यकीय सल्ले (ऑफलाइन)",
+                savedDesc: "इंटरनेटशिवाय वाचण्यासाठी जतन केलेले सल्ले.",
+                clearSaved: "यादी साफ करा",
+                modalHeading: "आपत्कालीन मदत",
+                modalSubheading: "तातडीचे हेल्पलाईन क्रमांक",
+                ambLabel: "रुग्णवाहिका सेवा",
+                ambDesc: "ग्रामीण आपत्कालीन परिस्थितीसाठी मोफत रुग्णवाहिका.",
+                natLabel: "राष्ट्रीय आपत्कालीन",
+                natDesc: "पोलिस आणि आरोग्यासाठी हेल्पलाईन.",
+                womenLabel: "महिला आणि बाल हेल्पलाईन",
+                womenDesc: "तातडीची मदत.",
+                offlineCallNote: "कॉल सेल्युलर नेटवर्कद्वारे कार्यान्वित होतात."
+            },
+            bn: {
+                subTitle: "আপনার স্বাস্থ্য সাথী",
+                offlineBadge: "অফলাইন প্রস্তুত",
+                emergencyBtn: "জরুরী / ১০৮",
+                tabChat: "হেলথজিপিটি সহকারী",
+                tabSymptoms: "লক্ষণ পরীক্ষা",
+                tabDirectory: "স্বাস্থ্য কেন্দ্র ডিরেক্টরি",
+                tabSaved: "সংরক্ষিত পরামর্শ",
+                chatHeaderTitle: "এআই ডাক্তার সহকারী",
+                chatHeaderDesc: "আপনার মাতৃভাষায় প্রশ্ন করুন এবং প্রাথমিক চিকিৎসা জানুন।",
+                clearChat: "নতুন পরামর্শ",
+                quickSymptomsLabel: "দ্রুত নির্বাচন:",
+                feverChip: "জ্বর ও ঠান্ডা",
+                coughChip: "কাশি ও সর্দি",
+                stomachChip: "পেটে ব্যথা",
+                pregnancyChip: "মাতৃত্ব যত্ন",
+                dengueChip: "ডেঙ্গু / ম্যালেরিয়া",
+                snakeChip: "সাপের কামড়",
+                welcomeMsg: "নমস্কার! আমি আপনার স্বাস্থ্য সহকারী। আপনার কি সমস্যা হচ্ছে?",
+                chatPlaceholder: "আপনার সমস্যার কথা এখানে লিখুন...",
+                voiceHint: "কথা বলতে মাইক বোতামে চাপুন",
+                symGridTitle: "সাধারণ স্বাস্থ্য সমস্যা ও প্রাথমিক চিকিৎসা",
+                symGridDesc: "নিরাপদ ঘরোয়া প্রতিকার দেখতে যেকোনো লক্ষণ নির্বাচন করুন।",
+                viewGuidance: "গাইড দেখুন",
+                emergencyProtocol: "জরুরী প্রোটোকল",
+                dirTitle: "কাছাকাছি স্বাস্থ্য কেন্দ্র ও আশা কর্মী",
+                dirDesc: "গ্রামীণ এলাকার জন্য জরুরী অ্যাম্বুলেন্স ও স্বাস্থ্য কেন্দ্র নম্বর।",
+                dirLoc: "জেলা: রামপুর",
+                savedTitle: "সংরক্ষিত চিকিৎসা পরামর্শ (অফলাইন)",
+                savedDesc: "ইন্টারনেট ছাড়াই পড়ার জন্য সংরক্ষিত পরামর্শ।",
+                clearSaved: "তালিকা মুছুন",
+                modalHeading: "জরুরী সহায়তা",
+                modalSubheading: "তাৎক্ষণিক হেল্পলাইন নম্বর",
+                ambLabel: "অ্যাম্বুলেন্স সেবা",
+                ambDesc: "বিনামূল্যে সরকারী অ্যাম্বুলেন্স।",
+                natLabel: "জাতীয় জরুরী",
+                natDesc: "পুলিশ, স্বাস্থ্য এবং অগ্নিকাণ্ডের জন্য হেল্পলাইন।",
+                womenLabel: "নারী ও শিশু হেল্পলাইন",
+                womenDesc: "মাতৃত্বকালীন সহায়তার জন্য।",
+                offlineCallNote: "নেটওয়ার্কের মাধ্যমে কল করা যাবে।"
+            },
+            te: {
+                subTitle: "మీ ఆరోగ్య తోడు",
+                offlineBadge: "ఆఫ్‌లైన్ సిద్ధం",
+                emergencyBtn: "అత్యవసర / 108",
+                tabChat: "హెల్త్‌జిపిటి అసిస్టెంట్",
+                tabSymptoms: "లక్షణాల తనిఖీ",
+                tabDirectory: "ఆరోగ్య కేంద్రాల డైరెక్టరీ",
+                tabSaved: "సేవ్ చేసిన సలహాలు",
+                chatHeaderTitle: "AI డాక్టర్ అసిస్టెంట్",
+                chatHeaderDesc: "మీ స్థానిక భాషలో ప్రశ్నలు అడగండి.",
+                clearChat: "కొత్త సంప్రదింపు",
+                quickSymptomsLabel: "త్వరిత ఎంపిక:",
+                feverChip: "జ్వరం",
+                coughChip: "దగ్గు",
+                stomachChip: "కడుపు నొప్పి",
+                pregnancyChip: "గర్భిణీ సంరక్షణ",
+                dengueChip: "డెంగ్యూ / మలేరియా",
+                snakeChip: "పాము కాటు",
+                welcomeMsg: "నమస్తే! నేను మీ ఆరోగ్య సహాయకుడిని. మీకు ఏ సమస్య ఉంది?",
+                chatPlaceholder: "మీ సమస్యను ఇక్కడ టైప్ చేయండి...",
+                voiceHint: "మాట్లాడటానికి మైక్ బటన్ నొక్కండి",
+                symGridTitle: "సాధారణ ఆరోగ్య సమస్యలు & ప్రథమ చికిత్స",
+                symGridDesc: "ఇంటి చిట్కాలు మరియు అత్యవసర హెచ్చరికలను వీక్షించండి.",
+                viewGuidance: "గైడ్ చూడండి",
+                emergencyProtocol: "అత్యవసర మార్గదర్శకం",
+                dirTitle: "సమీప PHC & ఆశా కార్యకర్తలు",
+                dirDesc: "ప్రాథమిక ఆరోగ్య కేంద్రాలు మరియు అంబులెన్స్ నంబర్లు.",
+                dirLoc: "జిల్లా: రాంపూర్",
+                savedTitle: "సేవ్ చేసిన సలహాలు (ఆఫ్‌లైన్)",
+                savedDesc: "ఇంటర్నెట్ లేకుండా చదవడానికి సేవ్ చేయబడినవి.",
+                clearSaved: "జాబితాను క్లియర్ చేయండి",
+                modalHeading: "అత్యవసర సహాయం",
+                modalSubheading: "హెల్ప్‌లైన్ నంబర్లు",
+                ambLabel: "అంబులెన్స్ సేవ",
+                ambDesc: "ఉచిత ప్రభుత్వ అంబులెన్స్.",
+                natLabel: "జాతీయ అత్యవసర",
+                natDesc: "పోలీసు మరియు ఆరోగ్య హెల్ప్‌లైన్.",
+                womenLabel: "మహిళా హెల్ప్‌లైన్",
+                womenDesc: "తక్షణ సహాయం కోసం.",
+                offlineCallNote: "కాల్స్ సెల్యులార్ నెట్‌వర్క్ ద్వారా పనిచేస్తాయి."
+            },
+            ta: {
+                subTitle: "உங்கள் ஆரோக்கிய தோழன்",
+                offlineBadge: "ஆஃப்லைன் தயார்",
+                emergencyBtn: "அவசரம் / 108",
+                tabChat: "ஹெல்த்ஜிபிடி உதவியாளர்",
+                tabSymptoms: "அறிகுறிகள் சோதனை",
+                tabDirectory: "மருத்துவமனை அடைவு",
+                tabSaved: "சேமிக்கப்பட்ட ஆலோசனைகள்",
+                chatHeaderTitle: "AI மருத்துவர் உதவியாளர்",
+                chatHeaderDesc: "உங்கள் சொந்த மொழியில் கேள்விகளைக் கேளுங்கள்.",
+                clearChat: "புதிய ஆலோசனை",
+                quickSymptomsLabel: "விரைவு தேர்வு:",
+                feverChip: "காய்ச்சல்",
+                coughChip: "இருமல்",
+                stomachChip: "வயிற்று வலி",
+                pregnancyChip: "கர்ப்ப கால பராமரிப்பு",
+                dengueChip: "டெங்கு / மலேரியா",
+                snakeChip: "பாம்பு கடி",
+                welcomeMsg: "வணக்கம்! நான் உங்கள் ஆரோக்கிய உதவியாளர். உங்களுக்கு என்ன பிரச்சனை?",
+                chatPlaceholder: "உங்கள் பிரச்சனையை இங்கே தட்டச்சு செய்யவும்...",
+                voiceHint: "பேச மைக் பொத்தானை அழுத்தவும்",
+                symGridTitle: "பொதுவான உடல்நலப் பிரச்சினைகள் & முதலுதவி",
+                symGridDesc: "வீட்டு வைத்தியம் மற்றும் அவசர எச்சரிக்கைகளைப் பார்க்கவும்.",
+                viewGuidance: "வழிகாட்டியைப் காண்க",
+                emergencyProtocol: "அவசர நெறிமுறை",
+                dirTitle: "அருகிலுள்ள PHC & ஆஷா பணியாளர்கள்",
+                dirDesc: "ஆரம்ப சுகாதார நிலையங்கள் மற்றும் ஆம்புலன்ஸ் எண்கள்.",
+                dirLoc: "மாவட்டம்: ராம்பூர்",
+                savedTitle: "சேமிக்கப்பட்ட ஆலோசனைகள் (ஆஃப்லைன்)",
+                savedDesc: "இணையம் இல்லாமல் படிக்க சேமிக்கப்பட்டவை.",
+                clearSaved: "பட்டியலை அழிக்கவும்",
+                modalHeading: "அவசர உதவி",
+                modalSubheading: "உடனடி உதவி எண்கள்",
+                ambLabel: "அம்புலன்ஸ் சேவை",
+                ambDesc: "இலவச அரசு ஆம்புலன்ஸ்.",
+                natLabel: "தேசிய அவசரம்",
+                natDesc: "காவல்துறை மற்றும் சுகாதார உதவி எண்.",
+                womenLabel: "பெண்கள் உதவி எண்",
+                womenDesc: "உடனடி உதவிக்கு.",
+                offlineCallNote: "செல்லுலார் நெட்வொர்க் மூலம் அழைப்புகள் செயல்படும்."
+            }
+        };
+
+        let currentLang = 'hi';
+        let currentUser = null;
+        let pendingSignupData = null;
+
+        // AUTHENTICATION LOGIC & PERSISTENCE
+        window.addEventListener('DOMContentLoaded', () => {
+            initAuthSession();
+            setupOtpInputs();
+        });
+
+        function initAuthSession() {
+            const storedUser = localStorage.getItem('healthgpt_user');
+            if (storedUser) {
+                currentUser = JSON.parse(storedUser);
+                applyUserSession(currentUser);
+                document.getElementById('auth-screen').classList.add('hidden');
+            } else {
+                document.getElementById('auth-screen').classList.remove('hidden');
+            }
+        }
+
+        function switchAuthTab(mode) {
+            const loginForm = document.getElementById('login-form');
+            const signupForm = document.getElementById('signup-form');
+            const otpForm = document.getElementById('otp-form');
+            const tabLogin = document.getElementById('auth-tab-login');
+            const tabSignup = document.getElementById('auth-tab-signup');
+
+            otpForm.classList.add('hidden');
+
+            if (mode === 'login') {
+                loginForm.classList.remove('hidden');
+                signupForm.classList.add('hidden');
+                tabLogin.className = "flex-1 py-2.5 rounded-xl text-sm font-bold transition text-emerald-700 bg-white shadow-sm";
+                tabSignup.className = "flex-1 py-2.5 rounded-xl text-sm font-semibold transition text-slate-600 hover:text-slate-900";
+            } else {
+                loginForm.classList.add('hidden');
+                signupForm.classList.remove('hidden');
+                tabSignup.className = "flex-1 py-2.5 rounded-xl text-sm font-bold transition text-emerald-700 bg-white shadow-sm";
+                tabLogin.className = "flex-1 py-2.5 rounded-xl text-sm font-semibold transition text-slate-600 hover:text-slate-900";
+            }
+        }
+
+        function handleLoginSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('login-id').value.trim();
+            const pass = document.getElementById('login-password').value.trim();
+
+            if (!id || !pass) {
+                showToast("Please fill in login details");
+                return;
+            }
+
+            // Simulated Login Lookup or Default Fallback
+            let savedUsers = JSON.parse(localStorage.getItem('healthgpt_accounts') || '[]');
+            let matched = savedUsers.find(u => u.phone === id || u.name.toLowerCase() === id.toLowerCase());
+
+            if (!matched) {
+                // Auto create demo user on first login
+                matched = {
+                    name: id.length > 5 && isNaN(id) ? id : "Ramesh Kumar",
+                    phone: isNaN(id) ? "9876543210" : id,
+                    role: "Patient",
+                    village: "Rampur, Block-A",
+                    lang: "hi"
+                };
+            }
+
+            currentUser = matched;
+            localStorage.setItem('healthgpt_user', JSON.stringify(currentUser));
+            applyUserSession(currentUser);
+            document.getElementById('auth-screen').classList.add('hidden');
+            showToast(`Welcome back, ${currentUser.name}!`);
+        }
+
+        function handleSignupSubmit(e) {
+            e.preventDefault();
+            const role = document.querySelector('input[name="userRole"]:checked')?.value || "Patient";
+            const name = document.getElementById('signup-name').value.trim();
+            const phone = document.getElementById('signup-phone').value.trim();
+            const village = document.getElementById('signup-village').value.trim();
+            const lang = document.getElementById('signup-lang').value;
+            const pass = document.getElementById('signup-password').value.trim();
+
+            if (!name || !phone || !village || !pass) {
+                showToast("Please complete all registration fields");
+                return;
+            }
+
+            pendingSignupData = { name, phone, village, lang, role };
+            document.getElementById('otp-phone-display').innerText = `+91 ${phone}`;
+            
+            // Switch to OTP view
+            document.getElementById('signup-form').classList.add('hidden');
+            document.getElementById('otp-form').classList.remove('hidden');
+            showToast("OTP code sent to mobile!");
+        }
+
+        function setupOtpInputs() {
+            const inputs = document.querySelectorAll('.otp-input');
+            inputs.forEach((input, idx) => {
+                input.addEventListener('keyup', (e) => {
+                    if (e.key >= '0' && e.key <= '9') {
+                        if (idx < inputs.length - 1) inputs[idx + 1].focus();
+                    } else if (e.key === 'Backspace') {
+                        if (idx > 0) inputs[idx - 1].focus();
+                    }
+                });
+            });
+        }
+
+        function handleOtpSubmit(e) {
+            e.preventDefault();
+            const otpEntered = Array.from(document.querySelectorAll('.otp-input')).map(i => i.value).join('');
+
+            if (otpEntered.length < 4) {
+                showToast("Please enter 4-digit OTP code");
+                return;
+            }
+
+            // Save new account
+            currentUser = pendingSignupData || { name: "Ramesh Kumar", role: "Patient", village: "Rampur", lang: "hi" };
+            
+            let savedAccounts = JSON.parse(localStorage.getItem('healthgpt_accounts') || '[]');
+            savedAccounts.push(currentUser);
+            localStorage.setItem('healthgpt_accounts', JSON.stringify(savedAccounts));
+            localStorage.setItem('healthgpt_user', JSON.stringify(currentUser));
+
+            applyUserSession(currentUser);
+            document.getElementById('auth-screen').classList.add('hidden');
+            showToast("Registration completed successfully!");
+        }
+
+        function continueAsGuest() {
+            currentUser = { name: "Guest User", role: "Guest", village: "Local Village", lang: currentLang };
+            applyUserSession(currentUser);
+            document.getElementById('auth-screen').classList.add('hidden');
+            showToast("Logged in as Guest");
+        }
+
+        function applyUserSession(user) {
+            if (!user) return;
+            
+            // Update UI User Header Badge
+            const initials = user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2) || "U";
+            document.getElementById('user-avatar-initials').innerText = initials;
+            document.getElementById('user-display-name').innerText = user.name;
+            document.getElementById('user-display-role').innerText = `${user.role} (${user.village || 'Rampur'})`;
+            document.getElementById('user-header-profile').classList.remove('hidden');
+
+            // Apply user's saved language preference
+            if (user.lang && translations[user.lang]) {
+                document.getElementById('language-select').value = user.lang;
+                changeLanguage(user.lang);
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('healthgpt_user');
+            currentUser = null;
+            document.getElementById('user-header-profile').classList.add('hidden');
+            document.getElementById('auth-screen').classList.remove('hidden');
+            switchAuthTab('login');
+            showToast("Logged out successfully");
+        }
+
+        // LANGUAGE CHANGE HANDLER
+        function changeLanguage(lang) {
+            currentLang = lang;
+            const t = translations[lang] || translations.en;
+            
+            document.getElementById('sub-title-text').innerText = t.subTitle;
+            document.getElementById('offline-badge-text').innerText = t.offlineBadge;
+            document.getElementById('emergency-btn-text').innerText = t.emergencyBtn;
+            document.getElementById('tab-chat-text').innerText = t.tabChat;
+            document.getElementById('tab-symptoms-text').innerText = t.tabSymptoms;
+            document.getElementById('tab-directory-text').innerText = t.tabDirectory;
+            document.getElementById('tab-saved-text').innerText = t.tabSaved;
+            
+            document.getElementById('chat-header-title').innerText = t.chatHeaderTitle;
+            document.getElementById('chat-header-desc').innerText = t.chatHeaderDesc;
+            document.getElementById('clear-chat-text').innerText = t.clearChat;
+            document.getElementById('quick-symptoms-label').innerText = t.quickSymptomsLabel;
+            
+            document.getElementById('symptom-fever').innerText = t.feverChip;
+            document.getElementById('symptom-cough').innerText = t.coughChip;
+            document.getElementById('symptom-stomach').innerText = t.stomachChip;
+            document.getElementById('symptom-pregnancy').innerText = t.pregnancyChip;
+            document.getElementById('symptom-dengue').innerText = t.dengueChip;
+            document.getElementById('symptom-snake').innerText = t.snakeChip;
+            
+            document.getElementById('bot-welcome-msg').innerText = t.welcomeMsg;
+            document.getElementById('chat-input').placeholder = t.chatPlaceholder;
+            document.getElementById('voice-status-hint').innerText = t.voiceHint;
+            
+            document.getElementById('sym-grid-title').innerText = t.symGridTitle;
+            document.getElementById('sym-grid-desc').innerText = t.symGridDesc;
+            
+            for(let i=1; i<=6; i++) {
+                const el = document.getElementById(`view-guidance-text-${i}`);
+                if(el) el.innerText = (i === 5 ? t.emergencyProtocol : t.viewGuidance);
+            }
+
+            document.getElementById('dir-title').innerText = t.dirTitle;
+            document.getElementById('dir-desc').innerText = t.dirDesc;
+            document.getElementById('dir-loc-text').innerText = t.dirLoc;
+            
+            document.getElementById('saved-title').innerText = t.savedTitle;
+            document.getElementById('saved-desc').innerText = t.savedDesc;
+            document.getElementById('clear-saved-text').innerText = t.clearSaved;
+
+            document.getElementById('modal-heading').innerText = t.modalHeading;
+            document.getElementById('modal-subheading').innerText = t.modalSubheading;
+            document.getElementById('amb-label').innerText = t.ambLabel;
+            document.getElementById('amb-desc').innerText = t.ambDesc;
+            document.getElementById('nat-label').innerText = t.natLabel;
+            document.getElementById('nat-desc').innerText = t.natDesc;
+            document.getElementById('women-label').innerText = t.womenLabel;
+            document.getElementById('women-desc').innerText = t.womenDesc;
+            document.getElementById('offline-call-note').innerText = t.offlineCallNote;
+
+            showToast("Language updated to " + lang.toUpperCase());
+        }
+
+        // Tab Switching Logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('border-emerald-600', 'text-emerald-700', 'font-bold');
+                el.classList.add('border-transparent', 'text-slate-600', 'font-semibold');
+            });
+
+            document.getElementById(`section-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            activeBtn.classList.remove('border-transparent', 'text-slate-600', 'font-semibold');
+            activeBtn.classList.add('border-emerald-600', 'text-emerald-700', 'font-bold');
+
+            if(tabId === 'saved') {
+                loadSavedAdvices();
+            }
+        }
+
+        // Emergency Modal Controller
+        function toggleEmergencyModal(show) {
+            const modal = document.getElementById('emergency-modal');
+            if (show) {
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        // Symptom Detail Modal Controller
+        const symptomDetailsData = {
+            fever: {
+                title: "High Fever & Chills First Aid",
+                icon: "fa-temperature-high",
+                color: "bg-orange-100 text-orange-600",
+                content: `
+                    <h4 class="font-bold text-slate-800">1. Immediate Home Care:</h4>
+                    <ul class="list-disc pl-5 space-y-1 text-xs">
+                        <li>Sponge the forehead, arms, and legs with normal tap water (do not use ice-cold water).</li>
+                        <li>Keep the patient in a well-ventilated, comfortable room and loosen heavy clothing.</li>
+                        <li>Ensure frequent hydration with ORS solution, coconut water, or clean boiled water.</li>
+                    </ul>
+                    <h4 class="font-bold text-slate-800 mt-3">2. When to Visit PHC Immediately:</h4>
+                    <ul class="list-disc pl-5 space-y-1 text-xs text-red-700 font-semibold">
+                        <li>Fever lasts for more than 3 days without relief.</li>
+                        <li>Severe shivering, neck stiffness, or confusion.</li>
+                        <li>Skin rashes or bleeding spots appear.</li>
+                    </ul>
+                `
+            },
+            cough: {
+                title: "Cough, Cold & Throat Pain Relief",
+                icon: "fa-head-side-cough",
+                color: "bg-blue-100 text-blue-600",
+                content: `
+                    <h4 class="font-bold text-slate-800">1. Traditional Remedies:</h4>
+                    <ul class="list-disc pl-5 space-y-1 text-xs">
+                        <li>Drink warm water mixed with honey, ginger juice, and black pepper.</li>
+                        <li>Inhale steam with a few drops of eucalyptus oil or plain hot water to clear nasal congestion.</li>
+                        <li>Gargle with warm water and a pinch of salt 3 times a day for sore throat.</li>
+                    </ul>
+                    <h4 class="font-bold text-slate-800 mt-3">2. When to Consult ASHA or Doctor:</h4>
+                    <ul class="list-disc pl-5 space-y-1 text-xs text-red-700 font-semibold">
+                        <li>Breathing difficulty or shortness of breath.</li>
+                        <li>Coughing up blood or greenish-yellow thick phlegm with chest pain.</li>
+                    </ul>
+                `
+            },
+            stomach: {
+                title: "Stomach Pain & Diarrhea Care",
+                icon: "fa-bowl-food",
+                color: "bg-amber-100 text-amber-700",
+                content: `
+                    <h4 class="font-bold text-slate-800">1. Rehydration Protocol:</h4>
+                    <ul class="list-disc pl-5 space-y-1 text-xs">
+                        <li>Administer ORS (Oral Rehydration Solution) packet dissolved in 1 liter of clean water after every loose motion.</li>
+                        <li>Eat easily digestible food such as plain rice, boiled dal water, banana, and curd.</li>
+                        <li>Avoid oily, spicy food and raw unwashed salads.</li>
+                    </ul>
+                    <h4 class="font-bold text-slate-800 mt-3">2. Emergency Signs:</h4>
+                    <ul class="list-disc pl-5 space-y-1 text-xs text-red-700 font-semibold">
+                        <li>Blood in stool or persistent severe vomiting.</li>
+                        <li>Extreme weakness and inability to drink fluids.</li>
+                    </ul>
+                `
+            },
+            maternal: {
+                title: "Maternal & Child Health Care",
+                icon: "fa-baby-carriage",
+                color: "bg-pink-100 text-pink-600",
+                content: `
+                    <h4 class="font-bold text-slate-800">1. Essential Guidelines:</h4>
+                    <ul class="list-disc pl-5 space-y-1 text-xs">
+                        <li>Pregnant women must take iron and folic acid tablets as prescribed by the ASHA worker.</li>
+                        <li>Ensure at least 4 mandatory Antenatal Care (ANC) checkups at the nearest PHC.</li>
+                        <li>Exclusive breastfeeding for newborn babies for the first 6 months.</li>
+                    </ul>
+                    <h4 class="font-bold text-slate-800 mt-3">2. Urgent Warning Signs:</h4>
+                    <ul class="list-disc pl-5 space-y-1 text-xs text-red-700 font-semibold">
+                        <li>Severe headache, blurred vision, or abdominal swelling during pregnancy.</li>
+                        <li>Any vaginal bleeding or reduced fetal movement.</li>
+                    </ul>
+                `
+            },
+            snake: {
+                title: "Snake Bite Emergency Protocol",
+                icon: "fa-shield-dog",
+                color: "bg-red-100 text-red-600",
+                content: `
+                    <h4 class="font-bold text-red-800">CRITICAL EMERGENCY INSTRUCTIONS:</h4>
+                    <ul class="list-disc pl-5 space-y-1 text-xs font-medium text-red-700">
+                        <li>DO NOT panic. Keep the victim completely still and calm to slow down venom spread.</li>
+                        <li>DO NOT tie tight tourniquets, do not cut the wound, and do not try to suck out poison.</li>
+                        <li>Remove rings, bangles, or tight clothing near the bite area before swelling starts.</li>
+                        <li>RUSH immediately to the nearest Primary Health Center (PHC) where Anti-Snake Venom (ASV) is available. Call 108.</li>
+                    </ul>
+                `
+            },
+            injury: {
+                title: "Wounds, Cuts & Minor Burns First Aid",
+                icon: "fa-band-aid",
+                color: "bg-purple-100 text-purple-600",
+                content: `
+                    <h4 class="font-bold text-slate-800">1. Wound Cleaning:</h4>
+                    <ul class="list-disc pl-5 space-y-1 text-xs">
+                        <li>Wash dirty cuts thoroughly with clean soap and running water to remove dirt.</li>
+                        <li>Apply pressure with a clean cloth to stop bleeding. Cover with a sterile bandage.</li>
+                        <li>Consult ASHA worker for Tetanus injection if the cut is from rusted iron or dirty soil.</li>
+                    </ul>
+                    <h4 class="font-bold text-slate-800 mt-3">2. Burn Care:</h4>
+                    <ul class="list-disc pl-5 space-y-1 text-xs">
+                        <li>Hold the burnt area under cool (not ice-cold) running tap water for 10-15 minutes.</li>
+                        <li>DO NOT apply toothpaste, butter, or oil on burns. Cover loosely with clean cloth.</li>
+                    </ul>
+                `
+            }
+        };
+
+        function openSymptomDetail(key) {
+            const data = symptomDetailsData[key];
+            if (!data) return;
+
+            document.getElementById('modal-sym-title').innerText = data.title;
+            document.getElementById('modal-sym-icon').className = `w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-bold ${data.color}`;
+            document.getElementById('modal-sym-icon').innerHTML = `<i class="fa-solid ${data.icon}"></i>`;
+            document.getElementById('modal-sym-content').innerHTML = data.content;
+
+            document.getElementById('symptom-modal').classList.remove('hidden');
+        }
+
+        function toggleSymptomModal(show) {
+            const modal = document.getElementById('symptom-modal');
+            if (show) {
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function saveModalAdvice() {
+            const title = document.getElementById('modal-sym-title').innerText;
+            const content = document.getElementById('modal-sym-content').innerText;
+            saveSpecificAdvice(title, content.slice(0, 150) + "...");
+            toggleSymptomModal(false);
+        }
+
+        // Call Simulation Modal
+        function simulateCall(name, number) {
+            toggleEmergencyModal(false);
+            document.getElementById('call-target-name').innerText = `Calling ${name}...`;
+            document.getElementById('call-target-number').innerText = number;
+            document.getElementById('call-modal').classList.remove('hidden');
+        }
+
+        function closeCallModal() {
+            document.getElementById('call-modal').classList.add('hidden');
+            showToast("Call ended successfully");
+        }
+
+        // Chat Assistant Simulation Logic
+        function sendQuickPrompt(promptText) {
+            document.getElementById('chat-input').value = promptText;
+            handleChatSubmit(new Event('submit'));
+        }
+
+        function handleChatSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if(!text) return;
+
+            appendUserMessage(text);
+            input.value = '';
+
+            // Simulate AI response thinking delay
+            setTimeout(() => {
+                generateAIResponse(text);
+            }, 800);
+        }
+
+        function appendUserMessage(text) {
+            const container = document.getElementById('chat-messages');
+            const html = `
+                <div class="flex items-start gap-3 justify-end">
+                    <div class="bg-emerald-700 text-white rounded-2xl p-4 max-w-xl shadow-sm text-sm leading-relaxed">
+                        <p>${escapeHtml(text)}</p>
+                    </div>
+                    <div class="w-9 h-9 rounded-full bg-slate-700 text-white flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-sm">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function appendBotMessage(responseTitle, responseBody) {
+            const container = document.getElementById('chat-messages');
+            const html = `
+                <div class="flex items-start gap-3">
+                    <div class="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-sm">
+                        <i class="fa-solid fa-robot"></i>
+                    </div>
+                    <div class="bg-white border border-slate-200 rounded-2xl p-4 max-w-xl shadow-sm text-slate-800">
+                        <p class="font-bold text-emerald-800 text-sm mb-1">${escapeHtml(responseTitle)}</p>
+                        <p class="text-sm leading-relaxed">${escapeHtml(responseBody)}</p>
+                        <div class="mt-3 flex items-center gap-2">
+                            <button onclick="saveSpecificAdvice('${escapeHtml(responseTitle)}', '${escapeHtml(responseBody)}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-2.5 py-1 rounded-lg font-medium transition flex items-center gap-1">
+                                <i class="fa-regular fa-bookmark"></i> Save Offline
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function generateAIResponse(query) {
+            let q = query.toLowerCase();
+            let title = "HealthGPT Medical Advice";
+            let body = "Aapke bataye gaye lakshan ke anusar, paryapt aaram karein, garam paani piyein aur agar takleef badhe toh nazdiki PHC ya ASHA worker se sampark karein.";
+
+            if (q.includes('fever') || q.includes('bukhar') || q.includes('tap')) {
+                title = "Fever Management & Home Care";
+                body = "Bukhar ke liye paracetamol le sakte hain (agar doctor ki salah ho), paani aur ORS adhik piyein. Agar bukhar 3 din se adhik rahe toh PHC Rampur jakar blood test (Malaria/Dengue) karwayein.";
+            } else if (q.includes('cough') || q.includes('cold') || q.includes('khasi') || q.includes('sardi')) {
+                title = "Cough & Cold First Aid";
+                body = "Garam pani ke sath adrak aur shahad lein. Namak ke paani se garare karein. Agar sans lene me dikkat ho toh turant doctor ko dikhayein.";
+            } else if (q.includes('stomach') || q.includes('pet') || q.includes('pain') || q.includes('diarrhea') || q.includes('vomit')) {
+                title = "Stomach Pain & Rehydration Guide";
+                body = "Dast (diarrhea) hone par ORS ka ghol har loose motion ke baad piyein. Dal ka pani aur khichdi khayein. Tal-bhuna khana bilkul na khayein.";
+            } else if (q.includes('dengue') || q.includes('malaria') || q.includes('joint')) {
+                title = "Dengue & Malaria Warning Checklist";
+                body = "Tez bukhar ke sath jodon mein dard, aankhon ke peeche dard ya chakte hona Dengue/Malaria ka sanket ho sakta hai. Turant CBC/Platlet aur NS1 test ke liye PHC Rampur visit karein.";
+            } else if (q.includes('snake') || q.includes('saanp') || q.includes('bite')) {
+                title = "⚠️ SNAKE BITE EMERGENCY ADVICE";
+                body = "Ghabraye nahi! Marij ko bilkul hilaaye nahi aur seedha leta de. Kisi bhi tarah ka band na banayein. Turant 108 ambulance ya nazdiki PHC par le jayein jahan Anti-Snake Venom uplabdh hai.";
+            } else if (q.includes('pregnancy') || q.includes('garbh') || q.includes('baby')) {
+                title = "Pregnancy & Maternal Care Guidance";
+                body = "Garbhwati mahila ko iron/calcium ki goliya samay par leni chahiye. ASHA worker Smt. Kamla Devi se sampark karein aur 4 ANC checkup zaroor karwayein.";
+            }
+
+            appendBotMessage(title, body);
+        }
+
+        function clearChat() {
+            const container = document.getElementById('chat-messages');
+            container.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <div class="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-sm">
+                        <i class="fa-solid fa-robot"></i>
+                    </div>
+                    <div class="bg-white border border-slate-200 rounded-2xl p-4 max-w-xl shadow-sm text-slate-800">
+                        <p class="font-bold text-emerald-800 text-sm mb-1">HealthGPT Assistant</p>
+                        <p id="bot-welcome-msg" class="text-sm leading-relaxed">Nayi salah shuru ho gayi hai. Aap apna naya sawal pooch sakte hain.</p>
+                        <div class="mt-3 flex items-center gap-2">
+                            <button onclick="saveCurrentAdvice(this)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-2.5 py-1 rounded-lg font-medium transition flex items-center gap-1">
+                                <i class="fa-regular fa-bookmark"></i> Save Offline
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            showToast("New consultation started");
+        }
+
+        // Voice Recording Simulation
+        let isRecording = false;
+        function toggleVoiceRecording() {
+            const micBtn = document.getElementById('mic-btn');
+            const micIcon = document.getElementById('mic-icon');
+            const input = document.getElementById('chat-input');
+
+            isRecording = !isRecording;
+            if (isRecording) {
+                micBtn.classList.add('bg-red-500', 'text-white', 'animate-pulse');
+                micIcon.className = "fa-solid fa-microphone-slash";
+                input.placeholder = "Listening... Speak your symptoms clearly...";
+                showToast("Listening... (Voice simulation active)");
+
+                // Simulate speech recognition after 3 seconds
+                setTimeout(() => {
+                    if (isRecording) {
+                        toggleVoiceRecording();
+                        input.value = currentLang === 'hi' ? "Mujhe tez bukhar aur sardi hai" : "I have high fever and cough";
+                        showToast("Voice captured successfully!");
+                    }
+                }, 3500);
+            } else {
+                micBtn.classList.remove('bg-red-500', 'text-white', 'animate-pulse');
+                micIcon.className = "fa-solid fa-microphone";
+                input.placeholder = translations[currentLang]?.chatPlaceholder || translations.en.chatPlaceholder;
+            }
+        }
+
+        // LocalStorage Offline Saving Functions
+        function saveCurrentAdvice(btn) {
+            saveSpecificAdvice("HealthGPT Welcome Advice", "Namaste! Main aapka swasthya sahayak hoon. Aapko kya takleef hai?");
+        }
+
+        function saveSpecificAdvice(title, body) {
+            let saved = JSON.parse(localStorage.getItem('healthgpt_saved') || '[]');
+            if(!saved.some(item => item.title === title)) {
+                saved.push({ title, body, date: new Date().toLocaleDateString() });
+                localStorage.setItem('healthgpt_saved', JSON.stringify(saved));
+                showToast("Advice saved for offline reading!");
+            } else {
+                showToast("Advice is already saved in offline list.");
+            }
+        }
+
+        function loadSavedAdvices() {
+            const container = document.getElementById('saved-advice-container');
+            let saved = JSON.parse(localStorage.getItem('healthgpt_saved') || '[]');
+
+            if(saved.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 bg-slate-50 border border-dashed border-slate-300 rounded-2xl">
+                        <div class="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-2xl mx-auto mb-3">
+                            <i class="fa-regular fa-bookmark"></i>
+                        </div>
+                        <h3 class="font-bold text-slate-700 text-base">No Saved Advice Yet</h3>
+                        <p class="text-xs text-slate-500 mt-1">Tap 'Save Offline' on any chat message or guide to read it without internet.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            saved.forEach((item, index) => {
+                html += `
+                    <div class="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h4 class="font-bold text-slate-800 text-sm">${escapeHtml(item.title)}</h4>
+                                <span class="bg-emerald-100 text-emerald-800 text-[10px] font-semibold px-2 py-0.5 rounded-full">${item.date}</span>
+                            </div>
+                            <p class="text-xs text-slate-600 mt-1 leading-relaxed">${escapeHtml(item.body)}</p>
+                        </div>
+                        <button onclick="removeSavedAdvice(${index})" class="bg-slate-200 hover:bg-red-100 hover:text-red-600 text-slate-600 text-xs px-3 py-1.5 rounded-xl transition flex items-center gap-1 font-medium flex-shrink-0">
+                            <i class="fa-solid fa-trash"></i> Remove
+                        </button>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function removeSavedAdvice(index) {
+            let saved = JSON.parse(localStorage.getItem('healthgpt_saved') || '[]');
+            saved.splice(index, 1);
+            localStorage.setItem('healthgpt_saved', JSON.stringify(saved));
+            loadSavedAdvices();
+            showToast("Saved advice removed");
+        }
+
+        function clearSavedAdvices() {
+            localStorage.removeItem('healthgpt_saved');
+            loadSavedAdvices();
+            showToast("All offline advices cleared");
+        }
+
+        // Toast Notification Helper
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
